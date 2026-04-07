@@ -1,0 +1,6 @@
+[submodule "map-viewer"]
+	path = map-viewer
+	url = git@github.com:dgrosch02/map-viewer.git
+[submodule "SilverServer"]
+	path = SilverServer
+	url = git@github.com:dgrosch02/SilverServer.git
