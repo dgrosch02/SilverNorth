@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String?
+  phoneNumber String   @unique @map("phone_number")
+  username    String?  @unique
+  email       String?  @unique
+  pictureKey  String?  @map("picture_key")
+  bio         String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  color       String?
+
+  sights      Sight[]
+
+  @@map("users")
+}
+
+model Sight {
+  id        Int       @id @default(autoincrement())
+  uuid      String    @unique @default(uuid())
+  userId    Int       @map("user_id")
+  title     String?
+  startTime DateTime  @map("start_time")
+  endTime   DateTime? @map("end_time")
+
+  // recorder position at start of recording
+  lat       Decimal   @db.Decimal(9, 6)
+  lon       Decimal   @db.Decimal(9, 6)
+  alt       Decimal?  @db.Decimal(8, 2)
+  accuracyM Decimal?  @db.Decimal(7, 2) @map("accuracy_m")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user      User            @relation(fields: [userId], references: [id])
+  instances SightInstance[]
+
+  @@index([userId])
+  @@index([lat, lon])
+  @@map("sights")
+}
+
+model SightInstance {
+  id         Int      @id @default(autoincrement())
+  sightId    Int      @map("sight_id")
+  label      String                          // bird, drone, bear...
+  confidence Decimal? @db.Decimal(5, 4)       // 0.0000 - 1.0000
+  timestamp  DateTime                         // when the object was first detected
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  sight        Sight              @relation(fields: [sightId], references: [id], onDelete: Cascade)
+  observations SightObservation[]
+
+  @@index([sightId])
+  @@index([label])
+  @@map("sight_instances")
+}
+
+model SightObservation {
+  id              Int      @id @default(autoincrement())
+  sightInstanceId Int      @map("sight_instance_id")
+  timestamp       DateTime                         // when this position sample was computed
+
+  lat             Decimal  @db.Decimal(9, 6)
+  lon             Decimal  @db.Decimal(9, 6)
+  alt             Decimal? @db.Decimal(8, 2)
+  accuracyM       Decimal? @db.Decimal(7, 2) @map("accuracy_m")
+
+  // 3x3 position covariance, meters^2 in local ENU frame
+  // e.g. { "xx":.., "yy":.., "zz":.., "xy":.., "xz":.., "yz":.. }
+  covariance      Json?
+
+  instance        SightInstance @relation(fields: [sightInstanceId], references: [id], onDelete: Cascade)
+
+  @@index([sightInstanceId, timestamp])
+  @@map("sight_observations")
+}
